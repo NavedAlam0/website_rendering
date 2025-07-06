@@ -1,9 +1,10 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const VideoGenerator = require('./videoGenerator');
+const GitHubService = require('./githubService');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,6 +27,17 @@ if (!fs.existsSync(videosDir)) {
 
 // Store video generation jobs
 const jobs = new Map();
+
+// Initialize GitHub service
+let githubService;
+try {
+    githubService = new GitHubService();
+    console.log('GitHub service initialized successfully');
+} catch (error) {
+    console.error('Failed to initialize GitHub service:', error.message);
+    console.log('Falling back to local rendering...');
+    githubService = null;
+}
 
 // Routes
 app.get('/', (req, res) => {
@@ -54,7 +66,7 @@ app.post('/api/generate-video', async (req, res) => {
             videoPath: null
         });
 
-        // Start video generation in background
+        // Start video generation
         generateVideo(jobId, url);
 
         res.json({ 
@@ -70,7 +82,7 @@ app.post('/api/generate-video', async (req, res) => {
 });
 
 // Check job status
-app.get('/api/job/:jobId', (req, res) => {
+app.get('/api/job/:jobId', async (req, res) => {
     const { jobId } = req.params;
     const job = jobs.get(jobId);
     
@@ -78,11 +90,31 @@ app.get('/api/job/:jobId', (req, res) => {
         return res.status(404).json({ error: 'Job not found' });
     }
     
+    // If using GitHub Actions, check the workflow status
+    if (githubService && job.status === 'processing') {
+        try {
+            const workflowStatus = await githubService.checkWorkflowStatus(jobId);
+            
+            if (workflowStatus.status === 'completed' && workflowStatus.conclusion === 'success') {
+                job.status = 'completed';
+                job.progress = 100;
+                job.completedAt = new Date();
+                jobs.set(jobId, job);
+            } else if (workflowStatus.status === 'failed' || workflowStatus.conclusion === 'failure') {
+                job.status = 'failed';
+                job.error = 'GitHub Actions workflow failed';
+                jobs.set(jobId, job);
+            }
+        } catch (error) {
+            console.error('Error checking workflow status:', error);
+        }
+    }
+    
     res.json(job);
 });
 
 // Download video
-app.get('/api/download/:jobId', (req, res) => {
+app.get('/api/download/:jobId', async (req, res) => {
     const { jobId } = req.params;
     const job = jobs.get(jobId);
     
@@ -99,9 +131,6 @@ app.get('/api/download/:jobId', (req, res) => {
     res.download(videoPath, `website-video-${jobId}.mp4`);
 });
 
-// Initialize video generator
-const videoGenerator = new VideoGenerator();
-
 // Video generation function
 async function generateVideo(jobId, url) {
     try {
@@ -111,25 +140,57 @@ async function generateVideo(jobId, url) {
         job.progress = 10;
         jobs.set(jobId, job);
         
-        // Generate video using Remotion with IFrame
-        console.log(`Starting video generation for job ${jobId} with URL: ${url}`);
-        
-        job.progress = 30;
-        jobs.set(jobId, job);
-        
-        // Use Puppeteer method for more reliable website capture
-        const videoPath = await videoGenerator.generateVideo(url, jobId, 300);
-        //const videoPath = await videoGenerator.generateVideoWithPuppeteer(url, jobId, 300);
-        
-        job.progress = 100;
-        
-        // Update job status
-        job.status = 'completed';
-        job.videoPath = videoPath.replace(__dirname + path.sep, ''); // Make path relative
-        job.completedAt = new Date();
-        jobs.set(jobId, job);
-        
-        console.log(`Video generated successfully for job ${jobId}`);
+        if (githubService) {
+            // Use GitHub Actions
+            console.log(`Starting GitHub Actions video generation for job ${jobId} with URL: ${url}`);
+            
+            job.progress = 20;
+            jobs.set(jobId, job);
+            
+            // Trigger GitHub Actions workflow
+            await githubService.triggerVideoRender(url, jobId, 300);
+            
+            job.progress = 30;
+            jobs.set(jobId, job);
+            
+            // Wait for completion and download
+            await githubService.waitForVideoCompletion(jobId);
+            
+            job.progress = 80;
+            jobs.set(jobId, job);
+            
+            // Download the video
+            const outputPath = path.join(videosDir, `video-${jobId}.mp4`);
+            await githubService.downloadVideo(jobId, outputPath);
+            
+            job.progress = 100;
+            job.status = 'completed';
+            job.videoPath = outputPath.replace(__dirname + path.sep, '');
+            job.completedAt = new Date();
+            jobs.set(jobId, job);
+            
+            console.log(`Video generated successfully via GitHub Actions for job ${jobId}`);
+            
+        } else {
+            // Fallback to local rendering (original code)
+            console.log(`Starting local video generation for job ${jobId} with URL: ${url}`);
+            
+            job.progress = 30;
+            jobs.set(jobId, job);
+            
+            // Use local video generator
+            const VideoGenerator = require('./videoGenerator');
+            const videoGenerator = new VideoGenerator();
+            const videoPath = await videoGenerator.generateVideo(url, jobId, 300);
+            
+            job.progress = 100;
+            job.status = 'completed';
+            job.videoPath = videoPath.replace(__dirname + path.sep, '');
+            job.completedAt = new Date();
+            jobs.set(jobId, job);
+            
+            console.log(`Video generated successfully locally for job ${jobId}`);
+        }
         
     } catch (error) {
         console.error(`Error generating video for job ${jobId}:`, error);
@@ -142,4 +203,9 @@ async function generateVideo(jobId, url) {
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    if (githubService) {
+        console.log('GitHub Actions integration enabled');
+    } else {
+        console.log('Using local video rendering (fallback mode)');
+    }
 }); 
