@@ -17,6 +17,10 @@ on:
         type: string
         default: '300'
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   render-video:
     runs-on: ubuntu-latest
@@ -49,23 +53,13 @@ jobs:
         path: video-${{ github.event.inputs.jobId }}.mp4
         retention-days: 1
         
-    - name: Create release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: video-${{ github.event.inputs.jobId }}
-        release_name: Video ${{ github.event.inputs.jobId }}
+        name: Video ${{ github.event.inputs.jobId }}
         draft: false
         prerelease: false
-        
-    - name: Upload video to release
-      uses: actions/upload-release-asset@v1
+        files: video-${{ github.event.inputs.jobId }}.mp4
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./video-${{ github.event.inputs.jobId }}.mp4
-        asset_name: video-${{ github.event.inputs.jobId }}.mp4
-        asset_content_type: video/mp4 
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
