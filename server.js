@@ -201,6 +201,24 @@ async function generateVideo(jobId, url) {
     }
 }
 
+app.post('/api/video-complete', (req, res) => {
+    const { jobId, videoUrl } = req.body;
+    if (!jobId || !videoUrl) {
+        return res.status(400).json({ error: 'Missing jobId or videoUrl' });
+    }
+    const job = jobs.get(jobId);
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+    job.status = 'completed';
+    job.progress = 100;
+    job.videoPath = videoUrl; // Store the direct URL or download it if you want
+    job.completedAt = new Date();
+    jobs.set(jobId, job);
+    console.log(`Webhook: Video for job ${jobId} is complete!`);
+    res.json({ success: true });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     if (githubService) {
