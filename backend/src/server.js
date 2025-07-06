@@ -117,17 +117,23 @@ app.get('/api/job/:jobId', async (req, res) => {
 app.get('/api/download/:jobId', async (req, res) => {
     const { jobId } = req.params;
     const job = jobs.get(jobId);
-    
+    console.log(`[DOWNLOAD] Requested jobId: ${jobId}`);
     if (!job || job.status !== 'completed') {
+        console.log(`[DOWNLOAD] Job not found or not completed: ${jobId}`);
         return res.status(404).json({ error: 'Video not ready or job not found' });
     }
-    
+    // If videoPath is a URL, redirect to it
+    if (job.videoPath && job.videoPath.startsWith('http')) {
+        console.log(`[DOWNLOAD] Redirecting to public video URL: ${job.videoPath}`);
+        return res.redirect(job.videoPath);
+    }
+    // Otherwise, serve local file (legacy)
     const videoPath = path.join(__dirname, job.videoPath);
-    
     if (!fs.existsSync(videoPath)) {
+        console.log(`[DOWNLOAD] Local video file not found: ${videoPath}`);
         return res.status(404).json({ error: 'Video file not found' });
     }
-    
+    console.log(`[DOWNLOAD] Serving local file: ${videoPath}`);
     res.download(videoPath, `website-video-${jobId}.mp4`);
 });
 
@@ -179,7 +185,7 @@ async function generateVideo(jobId, url) {
             jobs.set(jobId, job);
             
             // Use local video generator
-            const VideoGenerator = require('./videoGenerator');
+            const VideoGenerator = require('./backend/videoGenerator');
             const videoGenerator = new VideoGenerator();
             const videoPath = await videoGenerator.generateVideo(url, jobId, 300);
             
@@ -203,19 +209,25 @@ async function generateVideo(jobId, url) {
 
 app.post('/api/video-complete', (req, res) => {
     const { jobId, videoUrl } = req.body;
+    console.log('--- Webhook called ---');
+    console.log('Received payload:', req.body);
+
     if (!jobId || !videoUrl) {
+        console.log('Missing jobId or videoUrl');
         return res.status(400).json({ error: 'Missing jobId or videoUrl' });
     }
     const job = jobs.get(jobId);
     if (!job) {
+        console.log(`Job not found for jobId: ${jobId}`);
         return res.status(404).json({ error: 'Job not found' });
     }
     job.status = 'completed';
     job.progress = 100;
-    job.videoPath = videoUrl; // Store the direct URL or download it if you want
+    job.videoPath = videoUrl;
     job.completedAt = new Date();
     jobs.set(jobId, job);
     console.log(`Webhook: Video for job ${jobId} is complete!`);
+    console.log('Updated job:', job);
     res.json({ success: true });
 });
 
