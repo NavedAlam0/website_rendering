@@ -46,15 +46,19 @@ jobs:
       
     - name: Render video
       run: |
-        npx remotion render src/index.tsx WebsiteVideo "video-${{ github.event.inputs.jobId }}.mp4" \
+        npx remotion render src/index.tsx WebsiteVideo "videos/video-${{ github.event.inputs.jobId }}.mp4" \
           --props='{"url":"${{ github.event.inputs.url }}","duration":${{ github.event.inputs.duration }}}'
+      working-directory: ./backend
+        
+    - name: List files in backend
+      run: ls -lh
       working-directory: ./backend
         
     - name: Upload video as artifact
       uses: actions/upload-artifact@v4
       with:
         name: video-${{ github.event.inputs.jobId }}
-        path: video-${{ github.event.inputs.jobId }}.mp4
+        path: videos/video-${{ github.event.inputs.jobId }}.mp4
         retention-days: 1
         
     - name: Create Release
@@ -64,7 +68,7 @@ jobs:
         name: Video ${{ github.event.inputs.jobId }}
         draft: false
         prerelease: false
-        files: video-${{ github.event.inputs.jobId }}.mp4
+        files: videos/video-${{ github.event.inputs.jobId }}.mp4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
