@@ -58,9 +58,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: video-${{ github.event.inputs.jobId }}
-        path: videos/video-${{ github.event.inputs.jobId }}.mp4
+        path: backend/videos/video-${{ github.event.inputs.jobId }}.mp4
         retention-days: 1
-        
+
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -68,7 +68,7 @@ jobs:
         name: Video ${{ github.event.inputs.jobId }}
         draft: false
         prerelease: false
-        files: videos/video-${{ github.event.inputs.jobId }}.mp4
+        files: backend/videos/video-${{ github.event.inputs.jobId }}.mp4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
