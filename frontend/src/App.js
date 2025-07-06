@@ -92,6 +92,20 @@ function App() {
     setDownloadUrl(null);
   };
 
+  const handleDownload = () => {
+    console.log('[FRONTEND] Download button clicked for jobId:', jobId);
+    // You can also log the actual URL being used:
+    console.log('[FRONTEND] Downloading from:', `${API_BASE_URL}/api/download/${jobId}`);
+    // The default behavior is to let the <a> tag handle the download
+  };
+
+  useEffect(() => {
+    if (status === 'completed' && jobId) {
+      console.log('[FRONTEND] Job completed:', jobId);
+      console.log('[FRONTEND] Download URL:', `${API_BASE_URL}/api/download/${jobId}`);
+    }
+  }, [status, jobId]);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -145,10 +159,11 @@ function App() {
           {status === 'completed' && (
             <div className="success">
               <p>✅ Video generated successfully!</p>
-              <a 
-                href={downloadUrl} 
+              <a
+                href={`${API_BASE_URL}/api/download/${jobId}`}
                 download={`website-video-${jobId}.mp4`}
                 className="download-btn"
+                onClick={handleDownload}
               >
                 Download Video
               </a>
