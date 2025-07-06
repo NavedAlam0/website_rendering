@@ -141,55 +141,21 @@ app.get('/api/download/:jobId', async (req, res) => {
 async function generateVideo(jobId, url) {
     try {
         const job = jobs.get(jobId);
-        
-        // Update progress
-        job.progress = 10;
-        jobs.set(jobId, job);
-        
         if (githubService) {
             // Use GitHub Actions
             console.log(`Starting GitHub Actions video generation for job ${jobId} with URL: ${url}`);
-            
-            job.progress = 20;
-            jobs.set(jobId, job);
-            
-            // Trigger GitHub Actions workflow
             await githubService.triggerVideoRender(url, jobId, 300);
-            
-            job.progress = 30;
-            jobs.set(jobId, job);
-            
-            // Wait for completion and download
-            await githubService.waitForVideoCompletion(jobId);
-            
-            job.progress = 80;
-            jobs.set(jobId, job);
-            
-            // Download the video
-            const outputPath = path.join(videosDir, `video-${jobId}.mp4`);
-            await githubService.downloadVideo(jobId, outputPath);
-            
-            job.progress = 100;
-            job.status = 'completed';
-            job.videoPath = outputPath.replace(__dirname + path.sep, '');
-            job.completedAt = new Date();
-            jobs.set(jobId, job);
-            
-            console.log(`Video generated successfully via GitHub Actions for job ${jobId}`);
-            
+            // Do not update progress or wait for completion here.
+            // The webhook will update the job when the video is ready.
         } else {
             // Fallback to local rendering (original code)
             console.log(`Starting local video generation for job ${jobId} with URL: ${url}`);
-            
-            job.progress = 30;
-            jobs.set(jobId, job);
             
             // Use local video generator
             const VideoGenerator = require('./backend/videoGenerator');
             const videoGenerator = new VideoGenerator();
             const videoPath = await videoGenerator.generateVideo(url, jobId, 300);
             
-            job.progress = 100;
             job.status = 'completed';
             job.videoPath = videoPath.replace(__dirname + path.sep, '');
             job.completedAt = new Date();
@@ -197,7 +163,6 @@ async function generateVideo(jobId, url) {
             
             console.log(`Video generated successfully locally for job ${jobId}`);
         }
-        
     } catch (error) {
         console.error(`Error generating video for job ${jobId}:`, error);
         const job = jobs.get(jobId);

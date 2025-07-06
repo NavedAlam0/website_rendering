@@ -37,14 +37,17 @@ jobs:
         
     - name: Install dependencies
       run: npm install
+      working-directory: ./backend
       
     - name: Install Remotion CLI
       run: npm install -g @remotion/cli
+      working-directory: ./backend
       
     - name: Render video
       run: |
         npx remotion render src/index.tsx WebsiteVideo "video-${{ github.event.inputs.jobId }}.mp4" \
           --props='{"url":"${{ github.event.inputs.url }}","duration":${{ github.event.inputs.duration }}}'
+      working-directory: ./backend
         
     - name: Upload video as artifact
       uses: actions/upload-artifact@v4

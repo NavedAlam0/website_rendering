@@ -131,30 +131,6 @@ class GitHubService {
       throw new Error(`Failed to download video: ${error.message}`);
     }
   }
-
-  async waitForVideoCompletion(jobId, maxWaitTime = 300000) { // 5 minutes
-    const startTime = Date.now();
-    const checkInterval = 10000; // 10 seconds
-    
-    while (Date.now() - startTime < maxWaitTime) {
-      const status = await this.checkWorkflowStatus(jobId);
-      
-      if (status.status === 'completed') {
-        if (status.conclusion === 'success') {
-          return { success: true, status };
-        } else {
-          throw new Error(`Workflow failed with conclusion: ${status.conclusion}`);
-        }
-      } else if (status.status === 'failed') {
-        throw new Error('Workflow failed');
-      }
-      
-      // Wait before next check
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
-    }
-    
-    throw new Error('Timeout waiting for video completion');
-  }
 }
 
 module.exports = GitHubService; 
