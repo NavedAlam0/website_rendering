@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const GitHubService = require('./githubService');
+const { Octokit } = require('@octokit/rest');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -38,6 +39,11 @@ try {
     console.log('Falling back to local rendering...');
     githubService = null;
 }
+
+// Initialize Octokit
+const octokit = new Octokit({
+    auth: process.env.GITHUB_TOKEN
+});
 
 // Routes
 app.get('/', (req, res) => {
@@ -199,14 +205,23 @@ app.post('/api/video-complete', (req, res) => {
 app.post('/api/process', async (req, res) => {
   try {
     const { url, start, end } = req.body;
-    const duration = end - start;
+    const durationSeconds = end - start;
+    const fps = 30; // Set this to your Remotion project's fps
+    const durationInFrames = durationSeconds * fps;
 
-    // Trigger GitHub Actions workflow with url and duration
-    // (You need to use the GitHub API to dispatch the workflow)
-    // Example:
-    // await triggerGithubWorkflow({ url, duration });
+    // Trigger GitHub Actions workflow
+    await octokit.actions.createWorkflowDispatch({
+      owner: 'YOUR_GITHUB_USERNAME',
+      repo: 'YOUR_REPO_NAME',
+      workflow_id: 'render-video.yml',
+      ref: process.env.GITHUB_WORKFLOW_BRANCH || 'main',
+      inputs: {
+        url,
+        durationInFrames: String(durationInFrames)
+      }
+    });
 
-    res.json({ message: 'Workflow triggered', url, duration });
+    res.json({ message: 'Workflow triggered', url, durationInFrames });
   } catch (err) {
     res.status(500).json({ error: 'Processing failed.' });
   }
