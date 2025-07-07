@@ -196,6 +196,22 @@ app.post('/api/video-complete', (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/process', async (req, res) => {
+  try {
+    const { url, start, end } = req.body;
+    const duration = end - start;
+
+    // Trigger GitHub Actions workflow with url and duration
+    // (You need to use the GitHub API to dispatch the workflow)
+    // Example:
+    // await triggerGithubWorkflow({ url, duration });
+
+    res.json({ message: 'Workflow triggered', url, duration });
+  } catch (err) {
+    res.status(500).json({ error: 'Processing failed.' });
+  }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     if (githubService) {

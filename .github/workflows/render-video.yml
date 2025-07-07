@@ -1,21 +1,19 @@
 name: Render Website Video
 
 on:
+  push:
+    branches:
+      - changes
   workflow_dispatch:
     inputs:
       url:
         description: 'Website URL to render'
         required: true
         type: string
-      jobId:
-        description: 'Unique job ID'
+      duration:
+        description: 'Video duration in seconds'
         required: true
         type: string
-      duration:
-        description: 'Video duration in frames'
-        required: false
-        type: string
-        default: '300'
 
 permissions:
   contents: write
@@ -46,7 +44,7 @@ jobs:
       
     - name: Render video
       run: |
-        npx remotion render src/index.tsx WebsiteVideo "videos/video-${{ github.event.inputs.jobId }}.mp4" \
+        npx remotion render src/index.tsx WebsiteVideo "videos/output.mp4" \
           --props='{"url":"${{ github.event.inputs.url }}","duration":${{ github.event.inputs.duration }}}'
       working-directory: ./backend
         
@@ -57,18 +55,18 @@ jobs:
     - name: Upload video as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: video-${{ github.event.inputs.jobId }}
-        path: backend/videos/video-${{ github.event.inputs.jobId }}.mp4
+        name: video-${{ github.event.inputs.duration }}
+        path: backend/videos/output.mp4
         retention-days: 1
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: video-${{ github.event.inputs.jobId }}
-        name: Video ${{ github.event.inputs.jobId }}
+        tag_name: video-${{ github.event.inputs.duration }}
+        name: Video ${{ github.event.inputs.duration }}
         draft: false
         prerelease: false
-        files: backend/videos/video-${{ github.event.inputs.jobId }}.mp4
+        files: backend/videos/output.mp4
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -76,4 +74,4 @@ jobs:
       run: |
         curl -X POST ${{ secrets.WEBHOOK_URL }} \
           -H "Content-Type: application/json" \
-          -d '{"jobId":"${{ github.event.inputs.jobId }}","videoUrl":"https://github.com/${{ github.repository }}/releases/download/video-${{ github.event.inputs.jobId }}/video-${{ github.event.inputs.jobId }}.mp4"}' 
+          -d '{"jobId":"${{ github.event.inputs.duration }}","videoUrl":"https://github.com/${{ github.repository }}/releases/download/video-${{ github.event.inputs.duration }}/output.mp4"}' 
