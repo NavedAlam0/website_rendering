@@ -84,4 +84,4 @@ jobs:
       run: |
         curl -X POST "https://websiterendering-production.up.railway.app/api/video-complete" \
           -H "Content-Type: application/json" \
-          -d '{"jobId":"${{ steps.set_job_id.outputs.job_id }}","videoUrl":"${{ steps.set_video_url.outputs.video_url }}"}' 
+          -d '{"jobId":"${{ github.event.inputs.jobId }}","videoUrl":"${{ steps.set_video_url.outputs.video_url }}"}' 
