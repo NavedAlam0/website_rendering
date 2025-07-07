@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon server.js",
-    "build": "remotion build src/index.ts",
+    "build": "echo 'No build step required for backend'",
     "render": "remotion render src/index.ts",
     "preview": "remotion preview src/index.ts",
     "test": "node test.js"
