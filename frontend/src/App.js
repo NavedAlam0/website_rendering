@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 function App() {
@@ -8,6 +8,11 @@ function App() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [downloadUrl, setDownloadUrl] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
+  const [start, setStart] = useState(0);
+  const [end, setEnd] = useState(0);
+  const [videoUrl, setVideoUrl] = useState("");
+  const videoRef = useRef();
 
   // API base URL - change this to your deployed backend
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000';
@@ -97,6 +102,18 @@ function App() {
     // You can also log the actual URL being used:
     console.log('[FRONTEND] Downloading from:', `${API_BASE_URL}/api/download/${jobId}`);
     // The default behavior is to let the <a> tag handle the download
+  };
+
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    setVideoFile(file);
+    setVideoUrl(URL.createObjectURL(file));
+  };
+
+  const handleRangeChange = (e, type) => {
+    const value = Number(e.target.value);
+    if (type === "start") setStart(value);
+    else setEnd(value);
   };
 
   useEffect(() => {
@@ -189,6 +206,67 @@ function App() {
             <li>✅ Parallel video processing</li>
             <li>✅ High-quality MP4 output</li>
           </ul>
+        </div>
+
+        <div className="video-container">
+          <label htmlFor="video-file">Upload Video:</label>
+          <input
+            type="file"
+            id="video-file"
+            accept="video/*"
+            onChange={handleVideoChange}
+          />
+
+          {/* Add time range inputs here */}
+          {videoUrl && (
+            <div style={{ margin: "1rem 0" }}>
+              <label>
+                Start Time (seconds):
+                <input
+                  type="number"
+                  min={0}
+                  max={videoRef.current?.duration || undefined}
+                  value={start}
+                  onChange={e => handleRangeChange(e, "start")}
+                  style={{ marginLeft: 8, marginRight: 16 }}
+                />
+              </label>
+              <label>
+                End Time (seconds):
+                <input
+                  type="number"
+                  min={start}
+                  max={videoRef.current?.duration || undefined}
+                  value={end}
+                  onChange={e => handleRangeChange(e, "end")}
+                  style={{ marginLeft: 8 }}
+                />
+              </label>
+            </div>
+          )}
+
+          {videoUrl && (
+            <div style={{ position: "relative", width: 600 }}>
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                width={600}
+                controls
+              />
+              {/* Timeline overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 40,
+                  left: `${(start / (videoRef.current?.duration || 1)) * 100}%`,
+                  width: `${((end - start) / (videoRef.current?.duration || 1)) * 100}%`,
+                  height: 5,
+                  background: "rgba(0, 123, 255, 0.7)",
+                  pointerEvents: "none"
+                }}
+              />
+            </div>
+          )}
         </div>
       </main>
     </div>
