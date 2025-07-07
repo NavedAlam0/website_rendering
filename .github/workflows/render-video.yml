@@ -72,6 +72,14 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set job id
+      id: set_job_id
+      run: echo "::set-output name=job_id::${{ github.run_id }}"
+
+    - name: Set video url
+      id: set_video_url
+      run: echo "::set-output name=video_url::https://github.com/${{ github.repository }}/releases/download/video-${{ github.run_id }}/video-${{ github.run_id }}.mp4"
+
     - name: Notify backend of video completion
       run: |
         curl -X POST "https://websiterendering-production.up.railway.app/api/video-complete" \
